@@ -1,0 +1,246 @@
+"""This script is for renaming and organizing Mendeley files
+
+This script takes a BibTeX file as an input and (1) parses the file for information
+used to rename Mendeley files in a consistent format and (2) organizes those files
+into folders by document type.
+"""
+
+import os
+import shutil
+import re
+from tkinter import *
+from tkinter import filedialog, messagebox
+inputFeatures = []
+
+class Mendeley_Processor(Frame):
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+
+    def select_inputs(self):
+        self.master.title("Select BibTeX file")
+        self.grid(row=0, column=0, sticky=W)
+        self.inputLabel = Label(self.master, text="Select the BibTeX file you exported from Mendeley to rename and organize your files.", wraplength=300).grid(row=10, sticky=W)
+        self.inputButton = Button(self.master, text="Select BibTeX file", command=self.select_bibtex, width=20).grid(row=20, sticky=W)
+        self.nextButton = Button(self.master, text="Next", command=self.next_button).grid(row=60, sticky=W)
+
+    def select_bibtex(self):
+        featuresFiles = filedialog.askopenfilenames(parent=setup, title="Select BibTeX file")
+        self.featureFileList = setup.tk.splitlist(featuresFiles)
+        del inputFeatures[:]
+        for feature in self.featureFileList:
+            if feature in inputFeatures:
+                pass
+            else:
+                inputFeatures.append(feature)
+        self.featuresoptionsList = StringVar(self.master)
+        self.featuresoptionsList.set("Currently selected BibTeX file")
+        self.featuresoptionsButton = OptionMenu(*(self.master, self.featuresoptionsList) + tuple(inputFeatures))
+        self.featuresoptionsButton.grid(row=40, sticky=W)
+
+    def next_button(self):
+        if not inputFeatures:
+            messagebox.showinfo("Warning", "BibTeX file is empty.")
+        fPath, fExt = os.path.splitext(inputFeatures[0])
+        if fExt != ".bib":
+            messagebox.showinfo("Warning", "Please select BibTeX file.")
+        else:
+            self.master.quit()
+            self.master.destroy()
+            self.Mendeley_file_checker()
+
+    def Mendeley_file_checker(self):
+        self.filePath = inputFeatures[0]
+        
+        # Set the file name element lists
+        self.fileList = []
+        authorList = []
+        yearList = []
+        titleList = []
+        bookList = []
+        journalList = []
+        self.keywordsList = []
+        self.tagsList = []
+        
+        # Set the file search words
+        fileWord = "file ="
+        authorWord = "author ="
+        yearWord = "year ="
+        titleWord = "title ="
+        bookWord = "booktitle ="
+        journalWord = "journal ="
+        keywordsWord = "keywords ="
+        tagsWord = "tags ="
+        
+        # Set the escape parameters
+        self.authorEscape = []
+        self.dateEscape = []
+        self.titleEscape = []
+        self.bookEscape = []
+        self.journalEscape = []
+        self.keywordEscape = []
+        self.tagEscape = []
+        
+        # Read through the BibTeX file
+        with open(self.filePath, encoding='utf-8') as bibtexFile:
+            bibtexString = bibtexFile.read()
+            annoList = bibtexString.split("@")
+            annoNum = 1
+            if annoNum <= len(annoList):
+                for thing in annoList:
+                    del self.fileList[:]
+                    del authorList[:]
+                    del yearList[:]
+                    del titleList[:]
+                    del bookList[:]
+                    del journalList[:]
+                    del self.keywordsList[:]
+                    del self.tagsList[:]
+                    try:
+                        annoIndex = annoList[annoNum]
+                    except:
+                        continue
+                    indexNum = 0
+                    #indexList = annoIndex.split(',\n')
+                    indexList = annoIndex.split(',')
+                    annoNum += 1
+                    
+                    # Find and format file name elements
+                    for item in indexList:
+                        index = indexList[indexNum]
+                        if fileWord in index:
+                            fileFix = index.replace("file = {:", "")
+                            fileFix1 = fileFix.replace(r"$\backslash$", "")
+                            fileFix2 = fileFix1.replace(r"{\_}", "_")
+                            fileFix3 = fileFix2.replace(":pdf}", "")
+                            splitChar = ":"
+                            fileFix4 = splitChar.join(fileFix3.split(splitChar)[:2])
+                            self.fileList.append(fileFix4)
+                        if authorWord in index:
+                            authorFix = index.replace("author = {", "")
+                            authorFix1 = authorFix.replace("}", "")
+                            #authorFix2 = authorFix1.replace(",", "")
+                            authorFix2 = authorFix1.replace('\n|\r', "")
+                            authorList.append(authorFix2)
+                            print(authorFix2)
+                        if yearWord in index:
+                            yearFix = index.replace("year = {", "")
+                            yearFix1 = yearFix.replace("}", "")
+                            yearFix2 = yearFix1.rstrip('\r\n')
+                            yearList.append(yearFix2)
+                        if bookWord in index:
+                            indexNum += 1
+                            continue
+                        if titleWord in index:
+                            titleFix = index.replace("title = {{", "")
+                            titleFix1 = titleFix.replace("}}", "")
+                            titleFix2 = titleFix1.replace(",", "")
+                            titleFix3 = titleFix2.replace(" ", "_")
+                            titleFix4 = titleFix3.replace(":", "")
+                            titleFix5 = titleFix4.rstrip('\r\n')
+                            titleList.append(titleFix5)
+                            print(titleFix5)
+                        if journalWord in index:
+                            journalFix = index.replace("journal = {", "")
+                            journalFix1 = journalFix.replace("}", "")
+                            journalFix2 = journalFix1.replace(" ", "_")
+                            journalList.append(journalFix2)
+                        if keywordsWord in index:
+                            keywordFix = index.replace("keywords = {", "")
+                            keywordFix1 = keywordFix.replace('\n|\r', "")
+                            keywordFix2 = keywordFix1.replace('and', "")
+                            unwantedChars = re.compile("[\n\t\r]")
+                            keywordFix3 = unwantedChars.sub("", keywordFix2)
+                            self.keywordsList.append(keywordFix3)
+                        if tagsWord in index:
+                            tagFix = index.replace("mendeley-tags = {", "")
+                            tagFix1 = tagFix.replace("}", "")
+                            tagFix2 = tagFix1.replace(" ", "_")
+                            tagFix3 = tagFix2.replace('\n|\r', "")
+                            unwantedChars = re.compile("[\n\t\r]")
+                            tagFix4 = unwantedChars.sub("", tagFix3)
+                            self.tagsList.append(tagFix4)
+                        indexNum += 1
+                    
+                    # Setup naming variables for use
+                    self.fName = self.fileList[0]
+                    self.cleanName = re.sub(r'[{|$||\\||}]', r'', self.fName)
+                    unwantedChars = re.compile("[\n\t\r]")
+                    self.cleanName1 = unwantedChars.sub("", self.cleanName)
+                    self.bName = os.path.basename(self.cleanName)
+                    self.rName, self.rExt = os.path.splitext(self.bName)
+                    
+                    # Set up the new file name string
+                    if not authorList:
+                        messagebox.showinfo("Warning", "Please add an Author to " + self.rName + " in Mendeley")
+                        self.authorEscape.append('1')
+                        break
+                    else:
+                        self.authorFormat = os.linesep.join([line for line in authorList[0].splitlines() if line])
+                    if not yearList:
+                        messagebox.showinfo("Warning", "Please add a Year to " + self.rName + " in Mendeley")
+                        self.dateEscape.append('1')
+                        break
+                    else:
+                        self.dateFormat = os.linesep.join([row for row in yearList[0].splitlines() if row])
+                    if not titleList:
+                        messagebox.showinfo("Warning", "Please add a Title to " + self.rName + " in Mendeley")
+                        self.titleEscape.append('1')
+                        break
+                    else:
+                        self.titleFormat = os.linesep.join([line for line in titleList[0].splitlines() if line])
+                    if not self.tagsList:
+                        messagebox.showinfo("Warning", "Please add Tags to " + self.rName + " in Mendeley")
+                        self.tagEscape.append('1')
+                        break
+                    if '1' in self.authorEscape or '1' in self.dateEscape or '1' in self.titleEscape or '1' in self.tagEscape:
+                        file_error = "Assign appropriate information to the " + self.cleanName1 + " file in Mendeley and then re-export BibTex."
+                        messagebox.showinfo(file_error)
+                    else:
+                        self.Mendeley_file_renamer()
+            else:
+                print("Finished iterating through the file.")
+
+    def Mendeley_file_renamer(self):
+
+        # Clean the rename string
+        renameString = self.authorFormat + "_" + self.dateFormat + "_" + self.titleFormat
+        renameString1 = re.sub(r'[{|}|:|(|)|,|.|/|\\|-|=|@|!|#|$|%|^|&|+|"|>|<|?]', r'', renameString)
+        unwantedChars = re.compile("[\n\t\r]")
+        self.renameString2 = unwantedChars.sub("", renameString1)
+        # Rename the file
+        dName = os.path.dirname(self.cleanName)
+        dbName = os.path.basename(dName)
+        if dbName != "New_Papers":
+            self.filePath = r"O:\1_Geology_Program_Library\New_Papers" + "\\" + self.renameString2 + self.rExt
+        else:
+            self.filePath = dName + "\\" + self.renameString2 + self.rExt
+        self.filePath1 = unwantedChars.sub("", self.filePath)
+        os.rename(self.cleanName1, self.filePath1)
+        self.Mendeley_file_organizer()
+
+    def Mendeley_file_organizer(self):
+        # Make / confirm the base folders
+        baseFolder = r"O:\1_Geology_Program_Library\Archived_Papers"
+        firstTag = self.tagsList[0]
+        cleanTag = re.sub(r'[{|}|:|(|)|,|.|/|\\|-|=|@|!|#|%|^|&|+|"|>|<|?]', r'', firstTag)
+        unwantedTags = re.compile("[\n\t\r]")
+        cleanTag1 = unwantedTags.sub("", cleanTag)
+        tagFolder = baseFolder + "\\" + cleanTag1
+        if os.path.isdir(tagFolder):
+            pass
+        else:
+            os.mkdir(tagFolder)
+        tagPath = tagFolder + "\\" + self.renameString2 + self.rExt
+        # Figure out how to move the file while preserving the link to Mendeley
+        shutil.move(self.filePath1, tagPath)
+        #os.symlink(self.filePath1, tagPath)
+        
+if __name__ == "__main__":
+    # Setup the GUI
+    setup = Tk()
+    setup.minsize(width=300, height=120)
+    setup.geometry("150x50")
+
+    Mendeley_Class = Mendeley_Processor(master=setup)
+    Mendeley_Class.select_inputs()
+    Mendeley_Class.mainloop()
