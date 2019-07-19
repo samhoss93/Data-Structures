@@ -1,0 +1,88 @@
+
+import os, shutil, re
+from tkinter import Tk, Button, Label
+from tkinter import filedialog, messagebox, StringVar
+import openpyxl as op
+from openpyxl import load_workbook
+
+class Inventory():
+    def __init__(self, master):
+        self.master = master
+        master.title("YNP Inventory GUI")
+
+        self.label = Label(master, text="YNP Inventory Application!")
+        self.label.pack()
+
+        self.newinvoice_button = Button(master, text="New Invoice", command=self.new_invoice)
+        self.newinvoice_button.pack()
+
+        self.emailinvoice_button = Button(master, text="Email Invoice", command=self.email_invoice)
+        self.emailinvoice_button.pack()
+
+        self.mergeinvoice_button = Button(master, text="Merge Invoice", command=self.merge_invoice)
+        self.mergeinvoice_button.pack()
+
+        self.close_button = Button(master, text="Close", command=master.quit)
+        self.close_button.pack()
+
+    def new_invoice(self):
+        filetypes = [('Excel files', '.xlsx')]
+        self.filename =  filedialog.askopenfilename(initialdir = "/",title = "Select file",filetypes = filetypes)
+        print (self.filename)
+        # os.system("open "+self.filename)
+        self.label = Label(self.master, text="File:"+self.filename)
+        self.label.pack()
+
+        print("Grabbed a new file!")
+
+    def email_invoice(self):
+        print("Email it!")
+
+    def merge_invoice(self):
+        print("Merge it!")
+        wb = load_workbook(self.filename, read_only=True)
+        # wb = load_workbook(filename=self.featureoptionsList, read_only=True)
+        ws = wb['DI-1 Blank Form']
+        date = ""
+        date = ws.cell(row=3, column=11).value
+        account = ws.cell(row=6, column=7).value
+        vendor = ws.cell(row=9, column=1).value
+        justification = ws.cell(row=25, column=2).value
+        description_out = ""
+        quantity_out= ""
+        trow = 14
+        price = 0
+        unit_price = 0
+        print(ws.cell(row=14, column=2).value)
+        while ws.cell(row=trow, column=11).value is not None:
+            print("Entering the loop")
+            description = ws.cell(row=trow, column=2).value
+            quantity = ws.cell(row=trow, column=9).value
+            print(description)
+            print(quantity)
+            description_out = description_out + "," + description
+            quantity_out = quantity_out + "," + str(quantity)
+            unit_price = ws.cell(row=trow, column=11).value
+            print(unit_price)
+            price = price + quantity * unit_price
+            trow = trow + 1
+        self.master_inventory_file = "/Users/sam/Downloads/Order_status.xlsx"
+        wb= load_workbook(self.master_inventory_file)
+        ws = wb.active
+        # ws.insert_rows(1, 1)
+        ws.cell(row=1, column=1, value = date)
+        ws.cell(row=1, column=2).value = description_out
+        ws.cell(row=1, column=3).value = quantity_out
+        ws.cell(row=1, column=4).value = vendor
+        ws.cell(row=1, column=5).value = price
+        ws.cell(row=1, column=6).value = account
+        ws.cell(row=1, column=7).value = justification
+        wb.save(self.master_inventory_file)
+
+def main():
+    root = Tk()
+    ynp_inventory = Inventory(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
