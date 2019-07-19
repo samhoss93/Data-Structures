@@ -243,4 +243,4 @@ if __name__ == "__main__":
 
     Mendeley_Class = Mendeley_Processor(master=setup)
     Mendeley_Class.select_inputs()
-    Mendeley_Class.mainloop()
+    Mendeley_Class.mainloop() 
